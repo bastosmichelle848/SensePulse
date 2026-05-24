@@ -5,14 +5,13 @@
 SensePulse is an IoT-based embedded system for real-time monitoring of vital signs using an ESP32 microcontroller.  
 It integrates the **Web of Things (WoT)** architecture through a **Thing Description (TD)**, enabling standardized communication between devices and applications.
 
----
+
 
 ## 🚀 Overview
 
 The system collects physiological data from sensors connected to an ESP32 and exposes them through a WoT-compliant interface.  
 It allows clients to access and consume vital signs data in a structured and interoperable way.
 
----
 
 ## 🧠 Features
 
@@ -24,7 +23,6 @@ It allows clients to access and consume vital signs data in a structured and int
 - 🔁 Node.js server implementation  
 - 🏥 Healthcare IoT prototype  
 
----
 
 ## 🏗️ Architecture
 
@@ -41,7 +39,6 @@ It allows clients to access and consume vital signs data in a structured and int
   - Subscribes to data
   - Displays or processes vital signs
 
----
 
 ## 📄 Thing Description (TD)
 
@@ -56,7 +53,6 @@ They define:
 - Forms
 - Protocol bindings
 
----
 
 ## 🧰 Technologies
 
@@ -67,6 +63,21 @@ They define:
 - JSON
 
 
----
+## 📁 Running the project
 
-## 📁 Project Structure
+- node server_producer.js
+- node client_consumer.js
+
+
+## 🧩 Hardware Components
+
+The system is composed of the following hardware modules:
+
+- **ESP32 microcontroller:** Responsible for data acquisition, processing, and communication with the Web of Things (WoT) infrastructure.  
+- **MAX30100 sensor:** Used for monitoring heart rate and blood oxygen saturation (SpO2).  
+- **MLX90614 sensor:** Non-contact infrared sensor for measuring body temperature.  
+- **Vibration pager (actuator):** Provides haptic feedback for alerts and notifications.
+
+
+
+
