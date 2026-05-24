@@ -1,0 +1,16 @@
+{
+  "name": "wot-health-monitor",
+  "version": "1.0.0",
+  "description": "Servient WoT (node-wot) para o wearable patient001 — HTTP e opcionalmente MQTT",
+  "scripts": {
+    "server": "node server.js",
+    "consumer": "node consumer.js"
+  },
+  "dependencies": {
+    "@node-wot/binding-http": "^0.8.16",
+    "@node-wot/core": "^0.8.16"
+  },
+  "optionalDependencies": {
+    "@node-wot/binding-mqtt": "^0.8.16"
+  }
+}

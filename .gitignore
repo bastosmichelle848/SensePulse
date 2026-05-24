@@ -1,0 +1,16 @@
+# Node.js dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Compressed files
+*.zip
+*.rar
+
+# OS files
+.DS_Store
+Thumbs.db
