@@ -129,7 +129,7 @@ function avaliarLimiares() {
 //  CLIENTE MQTT — recebe dados reais do ESP32
 // ════════════════════════════════════════════════════════════
 function iniciarMQTT() {
-  console.log(`🔌 A ligar ao broker MQTT: ${MQTT_BROKER} ...`);
+  console.log(`A ligar ao broker MQTT: ${MQTT_BROKER} ...`);
 
   const mqttClient = mqtt.connect(MQTT_BROKER, {
     clientId:        MQTT_CLIENT_ID,
@@ -140,8 +140,8 @@ function iniciarMQTT() {
 
   mqttClient.on("connect", () => {
     state._mqttConectado = true;
-    console.log("✅ MQTT ligado ao broker.hivemq.com");
-    console.log(`📡 À espera de dados do ESP32 nos tópicos: "${TOPIC_SENSOR}", "${TOPIC_BEAT}"`);
+    console.log("MQTT ligado ao broker.hivemq.com");
+    console.log(`À espera de dados do ESP32 nos tópicos: "${TOPIC_SENSOR}", "${TOPIC_BEAT}"`);
     mqttClient.subscribe([TOPIC_SENSOR, TOPIC_BEAT], { qos: 1 });
   });
 
@@ -151,7 +151,7 @@ function iniciarMQTT() {
 
     // ── Batimento detetado pelo callback do MAX30100 ─────
     if (topic === TOPIC_BEAT) {
-      console.log(`[MQTT] 💗 ${mensagem}`);
+      console.log(`[MQTT] ${mensagem}`);
       return;
     }
 
@@ -161,7 +161,7 @@ function iniciarMQTT() {
       try {
         dados = JSON.parse(mensagem);
       } catch {
-        console.warn(`[MQTT] ⚠️  Payload inválido: ${mensagem}`);
+        console.warn(`[MQTT] Payload inválido: ${mensagem}`);
         return;
       }
 
@@ -171,7 +171,7 @@ function iniciarMQTT() {
       // Só aceita valores fisiologicamente plausíveis
       // HR < 30 ou SpO2 < 50 = sensor sem dedo ou leitura inválida
       if (isNaN(hr) || hr < 30 || hr > 220 || isNaN(spo2) || spo2 < 50 || spo2 > 100) {
-        console.warn(`[MQTT] ⚠️  Leitura ignorada (sensor sem dedo?): HR=${dados.heartRate} SpO2=${dados.spO2}`);
+        console.warn(`[MQTT] Leitura ignorada (sensor sem dedo?): HR=${dados.heartRate} SpO2=${dados.spO2}`);
         return;
       }
 
@@ -182,7 +182,7 @@ function iniciarMQTT() {
       if (!state.deviceReady) {
         state.deviceReady      = true;
         state.connectionStatus = "online";
-        console.log("\n✅ ESP32 ligado — primeira leitura real recebida. deviceReady = true\n");
+        console.log("\nESP32 ligado — primeira leitura real recebida. deviceReady = true\n");
 
         if (thingRef) {
           thingRef.emitEvent("deviceStatusChanged", {
@@ -195,7 +195,7 @@ function iniciarMQTT() {
       }
 
       console.log(
-        `[MQTT] 📥 ESP32 → BPM: ${state.heartRate}` +
+        `[MQTT] ESP32 → BPM: ${state.heartRate}` +
         ` | SpO2: ${state.spO2}%`
       );
 
@@ -203,13 +203,13 @@ function iniciarMQTT() {
       if (thingRef && state.deviceReady) {
         const alertas = avaliarLimiares();
         for (const alerta of alertas) {
-          const label = alerta.severity === "red" ? "🔴 CRÍTICO" : "🟡 ATENÇÃO";
-          console.log(`🚨 ALERTA ${label} | ${alerta.source} = ${alerta.value}`);
+          const label = alerta.severity === "red" ? "CRÍTICO" : "ATENÇÃO";
+          console.log(`ALERTA ${label} | ${alerta.source} = ${alerta.value}`);
           thingRef.emitEvent("criticalHealthAlert", alerta);
 
           // Vibração SOS automática em alertas críticos
           if (alerta.severity === "red" && !state.vibrationActive) {
-            console.log("📳 Auto-vibração SOS (alerta crítico)");
+            console.log("Auto-vibração SOS (alerta crítico)");
             state.vibrationActive = true;
             state.lastVibrationAt = new Date().toISOString();
             if (state.vibrationTimer) clearTimeout(state.vibrationTimer);
@@ -229,14 +229,14 @@ function iniciarMQTT() {
   mqttClient.on("reconnect", () => {
     state._mqttConectado   = false;
     state.connectionStatus = "reconnecting";
-    console.warn("🔄 MQTT a reconectar...");
+    console.warn("MQTT a reconectar...");
   });
 
   mqttClient.on("offline", () => {
     state._mqttConectado   = false;
     state.connectionStatus = "offline";
     state.deviceReady      = false;
-    console.warn("⚠️  MQTT offline — deviceReady = false");
+    console.warn("MQTT offline — deviceReady = false");
     if (thingRef) {
       thingRef.emitEvent("deviceStatusChanged", {
         connectionStatus: "offline",
@@ -248,7 +248,7 @@ function iniciarMQTT() {
   });
 
   mqttClient.on("error", (err) => {
-    console.error("❌ Erro MQTT:", err.message);
+    console.error("Erro MQTT:", err.message);
   });
 
   return mqttClient;
@@ -472,7 +472,7 @@ servient.start().then(async (WoT) => {
     if (typeof novo !== "number" || novo < 1000 || novo > 60000)
       throw new Error(`samplingIntervalMs fora do intervalo [1000, 60000]: ${novo}`);
     state.samplingIntervalMs = novo;
-    console.log(`⚙️  samplingIntervalMs → ${novo} ms`);
+    console.log(`samplingIntervalMs → ${novo} ms`);
   });
 
   thing.setPropertyWriteHandler("emissivity", async (val) => {
@@ -480,7 +480,7 @@ servient.start().then(async (WoT) => {
     if (typeof novo !== "number" || novo < 0.1 || novo > 1.0)
       throw new Error(`emissivity fora do intervalo [0.1, 1.0]: ${novo}`);
     state.emissivity = novo;
-    console.log(`⚙️  emissivity → ${novo}`);
+    console.log(`emissivity → ${novo}`);
   });
 
   thing.setPropertyWriteHandler("thresholds", async (val) => {
@@ -508,7 +508,7 @@ servient.start().then(async (WoT) => {
 
     state.vibrationActive = true;
     state.lastVibrationAt = new Date().toISOString();
-    console.log(`📳 activateVibration | pattern=${pattern} | ${duration_ms}ms | intensity=${intensity}`);
+    console.log(`activateVibration | pattern=${pattern} | ${duration_ms}ms | intensity=${intensity}`);
 
     state.vibrationTimer = setTimeout(() => {
       state.vibrationActive = false;
@@ -516,7 +516,7 @@ servient.start().then(async (WoT) => {
         durationMs: duration_ms, pattern,
         timestamp: new Date().toISOString()
       });
-      console.log(`📳 vibração concluída (${pattern}, ${duration_ms}ms)`);
+      console.log(`vibração concluída (${pattern}, ${duration_ms}ms)`);
     }, duration_ms);
 
     return { success: true, startedAt: state.lastVibrationAt };
@@ -525,7 +525,7 @@ servient.start().then(async (WoT) => {
   thing.setActionHandler("stopVibration", async () => {
     if (state.vibrationTimer) clearTimeout(state.vibrationTimer);
     state.vibrationActive = false;
-    console.log("🛑 stopVibration");
+    console.log("stopVibration");
     return { success: true };
   });
 
@@ -540,7 +540,7 @@ servient.start().then(async (WoT) => {
   thing.setActionHandler("registerDevice", async (params) => {
     const input = params ? await params.value() : {};
     const url   = input?.directoryUrl ?? "https://gateway.wot-health.local:8081/things";
-    console.log(`📒 registerDevice → ${url}`);
+    console.log(`registerDevice → ${url}`);
     return { success: true, registeredAt: new Date().toISOString() };
   });
 
@@ -559,12 +559,12 @@ servient.start().then(async (WoT) => {
 
   await thing.expose();
 
-  console.log("\n🚀 Servient Producer ativo");
+  console.log("\nServient Producer ativo");
   console.log("   Thing Description → GET http://localhost:8080/patient001");
   console.log("   À espera de dados do ESP32 via MQTT...");
   console.log("   (deviceReady = false até chegar a 1ª mensagem real)\n");
 
 }).catch((err) => {
-  console.error("❌ Erro ao iniciar o Servient Producer:", err);
+  console.error("Erro ao iniciar o Servient Producer:", err);
   process.exit(1);
 });
