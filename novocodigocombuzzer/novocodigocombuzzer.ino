@@ -11,8 +11,8 @@
 
 #define LIMITE_BPM 100
 
-const char* ssid = "seususuario";
-const char* password = "suasenha";
+const char* ssid = "youruser";
+const char* password = "yourpassword";
 const char* mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
 const char* mqtt_topic = "healthsensor";
