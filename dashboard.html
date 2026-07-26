@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthMonitor — WoT Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy: #0D1B2A; --blue: #1565C0; --teal: #1ABC9C;
+      --red: #C0392B;  --yellow: #F39C12; --green: #27AE60;
+      --light: #F4F6F8; --card: #FFFFFF; --mid: #607D8B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--light); color: #212121; }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      background: var(--navy); color: #fff; padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header h1 span { color: var(--teal); }
+    #status-badge {
+      padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;
+      font-weight: 700; background: #333; color: #fff;
+    }
+    #status-badge.online  { background: var(--green); }
+    #status-badge.offline { background: var(--red); }
+
+    /* ── Layout ────────────────────────────────────────────────── */
+    main { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-bottom: 20px; }
+    @media(max-width:768px){ .grid-4{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;} }
+
+    /* ── Cards ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--card); border-radius: 10px;
+      padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .card-title { font-size: .75rem; color: var(--mid); text-transform: uppercase;
+                  letter-spacing:.5px; margin-bottom: 6px; }
+    .card-value { font-size: 2.4rem; font-weight: 800; color: var(--navy); line-height:1; }
+    .card-unit  { font-size: .85rem; color: var(--mid); margin-top: 2px; }
+    .card-value.alert { color: var(--red); }
+    .card-value.warn  { color: var(--yellow); }
+
+    /* ── Secções ───────────────────────────────────────────────── */
+    .section-title {
+      font-size: 1rem; font-weight: 700; color: var(--navy);
+      border-left: 4px solid var(--teal); padding-left: 10px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Gráficos ──────────────────────────────────────────────── */
+    .chart-card { background: var(--card); border-radius: 10px;
+                  padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .chart-card canvas { max-height: 220px; }
+
+    /* ── Tabela histórico ──────────────────────────────────────── */
+    .table-card { background: var(--card); border-radius: 10px;
+                  padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .table-controls { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .table-controls input, .table-controls select, .table-controls button {
+      padding: 7px 12px; border: 1px solid #ddd; border-radius: 6px;
+      font-size: .85rem; outline: none;
+    }
+    .table-controls button {
+      background: var(--blue); color: #fff; border-color: var(--blue);
+      cursor: pointer; font-weight: 700;
+    }
+    .table-controls button:hover { background: #0d47a1; }
+    .btn-danger { background: var(--red) !important; border-color: var(--red) !important; }
+    table { width:100%; border-collapse:collapse; font-size:.88rem; }
+    th { background: var(--navy); color:#fff; padding:9px 12px; text-align:left; }
+    td { padding:8px 12px; border-bottom:1px solid #f0f0f0; }
+    tr:hover td { background:#f9f9f9; }
+    .badge {
+      display:inline-block; padding:2px 10px; border-radius:12px;
+      font-size:.75rem; font-weight:700; color:#fff;
+    }
+    .badge-red    { background:var(--red); }
+    .badge-yellow { background:var(--yellow); }
+    .badge-green  { background:var(--green); }
+    .badge-blue   { background:var(--blue); }
+
+    /* ── Alertas ───────────────────────────────────────────────── */
+    #alert-box {
+      display:none; background:#FFEBEE; border:2px solid var(--red);
+      border-radius:10px; padding:14px 18px; margin-bottom:16px;
+      color: var(--red); font-weight:700; font-size:.95rem;
+    }
+    #alert-box.queda { background:#EDE7F6; border-color:#6A1B9A; color:#6A1B9A; }
+
+    /* ── Acções WoT ───────────────────────────────────────────── */
+    .actions-grid { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+    .action-btn {
+      padding:10px 20px; border:none; border-radius:8px;
+      font-size:.9rem; font-weight:700; cursor:pointer; color:#fff;
+    }
+    .action-btn:hover { opacity:.85; }
+
+    /* ── Tabs ──────────────────────────────────────────────────── */
+    .tabs { display:flex; gap:2px; margin-bottom:16px; }
+    .tab {
+      padding:8px 20px; border-radius:8px 8px 0 0; cursor:pointer;
+      font-weight:700; font-size:.88rem; background:#e0e0e0; color:var(--mid);
+    }
+    .tab.active { background:var(--blue); color:#fff; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    footer { text-align:center; padding:16px; font-size:.78rem; color:var(--mid); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>❤️ Health<span>Monitor</span> &nbsp;|&nbsp; WoT Dashboard</h1>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:.8rem;color:#aaa;" id="last-update">—</span>
+    <span id="status-badge" class="offline">OFFLINE</span>
+  </div>
+</header>
+
+<main>
+  <!-- Alerta de emergência -->
+  <div id="alert-box"></div>
+
+  <!-- Cards de leitura em tempo real -->
+  <div class="grid-4">
+    <div class="card">
+      <div class="card-title">Frequência Cardíaca</div>
+      <div class="card-value" id="val-bpm">—</div>
+      <div class="card-unit">BPM</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Saturação O₂ (SpO2)</div>
+      <div class="card-value" id="val-spo2">—</div>
+      <div class="card-unit">%</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Queda Detectada</div>
+      <div class="card-value" id="val-fall" style="font-size:1.5rem">—</div>
+      <div class="card-unit" id="val-fall-ts">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Vibração</div>
+      <div class="card-value" id="val-vib" style="font-size:1.5rem">—</div>
+      <div class="card-unit">Atuador</div>
+    </div>
+  </div>
+
+  <!-- Stats BD -->
+  <div class="grid-4" style="margin-bottom:20px;">
+    <div class="card" style="border-top:3px solid var(--blue);">
+      <div class="card-title">Total Leituras (BD)</div>
+      <div class="card-value" id="stat-total" style="font-size:1.8rem">—</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--teal);">
+      <div class="card-title">Média BPM</div>
+      <div class="card-value" id="stat-bpm" style="font-size:1.8rem">—</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green);">
+      <div class="card-title">Média SpO2</div>
+      <div class="card-value" id="stat-spo2" style="font-size:1.8rem">—</div>
+    </div>
+    <div class="card" style="border-top:3px solid var(--red);">
+      <div class="card-title">Total Quedas (BD)</div>
+      <div class="card-value" id="stat-quedas" style="font-size:1.8rem">—</div>
+    </div>
+  </div>
+
+  <!-- Acções WoT -->
+  <p class="section-title">Acções WoT (invokeAction)</p>
+  <div class="actions-grid">
+    <button class="action-btn" style="background:var(--teal);"
+      onclick="acaoVibrar('short',500)">▶ Vibração Curta (500ms)</button>
+    <button class="action-btn" style="background:var(--blue);"
+      onclick="acaoVibrar('long',1500)">▶ Vibração Longa (1,5s)</button>
+    <button class="action-btn" style="background:var(--red);"
+      onclick="acaoVibrar('sos',3000)">🚨 SOS (3s)</button>
+    <button class="action-btn" style="background:var(--mid);"
+      onclick="acaoParar()">⏹ Parar Vibração</button>
+    <button class="action-btn" style="background:var(--green);"
+      onclick="acaoCalibar()">⚙ Calibrar (quick)</button>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="grid-2">
+    <div class="chart-card">
+      <p class="section-title">BPM — Últimas Leituras</p>
+      <canvas id="chart-bpm"></canvas>
+    </div>
+    <div class="chart-card">
+      <p class="section-title">SpO2 — Últimas Leituras</p>
+      <canvas id="chart-spo2"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabs: Histórico / Quedas -->
+  <div class="tabs">
+    <div class="tab active" onclick="mudarTab('historico',this)">📋 Histórico Sinais Vitais</div>
+    <div class="tab"        onclick="mudarTab('quedas',this)">⚠️ Eventos de Queda</div>
+  </div>
+
+  <!-- Tab Histórico -->
+  <div id="tab-historico" class="tab-content active table-card">
+    <div class="table-controls">
+      <input type="number" id="filtro-limit" value="20" min="1" max="200" placeholder="Nº registos" style="width:110px;">
+      <input type="date" id="filtro-from" placeholder="De">
+      <input type="date" id="filtro-to"   placeholder="Até">
+      <button onclick="carregarHistorico()">🔍 Filtrar</button>
+      <button class="btn-danger" onclick="limparHistorico()">🗑 Limpar selecionados</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="chk-all-h" onchange="selecionarTodos('h')"></th>
+        <th>ID</th><th>BPM</th><th>SpO2 (%)</th><th>Timestamp</th><th>Estado</th>
+      </tr></thead>
+      <tbody id="tbody-historico"></tbody>
+    </table>
+  </div>
+
+  <!-- Tab Quedas -->
+  <div id="tab-quedas" class="tab-content table-card">
+    <div class="table-controls">
+      <button onclick="carregarQuedas()">🔄 Actualizar</button>
+      <button class="btn-danger" onclick="limparQuedas()">🗑 Limpar selecionados</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th><input type="checkbox" id="chk-all-q" onchange="selecionarTodos('q')"></th>
+        <th>ID</th><th>Tipo</th><th>Intensidade</th><th>Contagem</th><th>Paciente</th><th>Timestamp</th>
+      </tr></thead>
+      <tbody id="tbody-quedas"></tbody>
+    </table>
+  </div>
+</main>
+
+<footer>
+  HealthMonitor WoT Dashboard — Thing Description: <a href="http://localhost:8080/patient001" target="_blank">localhost:8080/patient001</a>
+  &nbsp;|&nbsp; REST API: <a href="/api/readings" target="_blank">localhost:3001/api/readings</a>
+</footer>
+
+<script>
+// ── Configuração ──────────────────────────────────────────────────────────────
+const WOT_BASE = "http://localhost:8080/patient001/properties";
+const API_BASE = "http://localhost:3001/api";
+const POLL_MS  = 3000; // polling a cada 3s
+
+// ── Gráficos ──────────────────────────────────────────────────────────────────
+const chartOpts = (label, color, yMin, yMax) => ({
+  type: "line",
+  data: { labels: [], datasets: [{ label, data: [],
+    borderColor: color, backgroundColor: color+"22",
+    borderWidth: 2, pointRadius: 2, tension: 0.3, fill: true }]},
+  options: {
+    responsive: true, animation: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { maxTicksLimit: 8 } },
+      y: { min: yMin, max: yMax }
+    }
+  }
+});
+
+const chartBpm  = new Chart(document.getElementById("chart-bpm"),  chartOpts("BPM", "#1565C0", 40, 180));
+const chartSpo2 = new Chart(document.getElementById("chart-spo2"), chartOpts("SpO2 %", "#27AE60", 80, 100));
+
+function addPonto(chart, label, value, maxPts=20) {
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(value);
+  if(chart.data.labels.length > maxPts) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update();
+}
+
+// ── Polling da Thing Description (WoT) ───────────────────────────────────────
+async function lerPropriedadeWoT(prop) {
+  const r = await fetch(`${WOT_BASE}/${prop}`);
+  if(!r.ok) throw new Error(`${prop}: ${r.status}`);
+  return r.json();
+}
+
+async function atualizarTempoReal() {
+  try {
+    const [hr, spo2, devReady, fallActive, lastFall, vibActive] = await Promise.all([
+      lerPropriedadeWoT("heartRate"),
+      lerPropriedadeWoT("spO2"),
+      lerPropriedadeWoT("deviceReady"),
+      lerPropriedadeWoT("fallDetectionActive"),
+      lerPropriedadeWoT("lastFallEvent"),
+      lerPropriedadeWoT("vibrationActive"),
+    ]);
+
+    // Estado do dispositivo
+    const badge = document.getElementById("status-badge");
+    if(devReady) { badge.className="online"; badge.textContent="ONLINE"; }
+    else         { badge.className="offline"; badge.textContent="SEM ESP32"; }
+
+    // BPM
+    const elmBpm = document.getElementById("val-bpm");
+    elmBpm.textContent = hr ?? "—";
+    elmBpm.className = "card-value" + (hr > 100 ? " alert" : hr > 90 ? " warn" : "");
+
+    // SpO2
+    const elmSpo2 = document.getElementById("val-spo2");
+    elmSpo2.textContent = spo2 ?? "—";
+    elmSpo2.className = "card-value" + (spo2 < 90 ? " alert" : spo2 < 95 ? " warn" : "");
+
+    // Queda
+    const elmFall = document.getElementById("val-fall");
+    const elmFallTs = document.getElementById("val-fall-ts");
+    if(fallActive && lastFall) {
+      elmFall.textContent = lastFall.tipo === "queda" ? "🚨 QUEDA" : "⚠️ IMPACTO";
+      elmFall.className = "card-value alert";
+      elmFallTs.textContent = `contagem=${lastFall.contagem}`;
+      mostrarAlerta(lastFall);
+    } else {
+      elmFall.textContent = "Normal";
+      elmFall.className = "card-value";
+      elmFallTs.textContent = "Sem eventos";
+      esconderAlerta();
+    }
+
+    // Vibração
+    document.getElementById("val-vib").textContent = vibActive ? "🔔 ACTIVO" : "Inactivo";
+
+    // Gráficos
+    const hora = new Date().toLocaleTimeString("pt-PT");
+    if(hr)   addPonto(chartBpm,  hora, hr);
+    if(spo2) addPonto(chartSpo2, hora, spo2);
+
+    // Alerta BPM alto
+    if(hr > 100) mostrarAlertaClinico(`BPM elevado: ${hr} bpm`, "red");
+
+    document.getElementById("last-update").textContent = `Última atualização: ${hora}`;
+
+  } catch(e) {
+    document.getElementById("status-badge").className = "offline";
+    document.getElementById("status-badge").textContent = "SERVIDOR OFF";
+  }
+}
+
+// ── Alertas visuais ────────────────────────────────────────────────────────────
+let alertTimeout = null;
+function mostrarAlerta(ev) {
+  const box = document.getElementById("alert-box");
+  box.className = ev.tipo === "queda" ? "queda" : "";
+  box.style.display = "block";
+  const icone = ev.tipo === "queda" ? "🚨" : "⚠️";
+  box.innerHTML = `${icone} <strong>${ev.tipo.toUpperCase()} DETECTADO</strong> — ${ev.intensidade} | ${ev.contagem} impulsos/500ms | ${ev.timestamp}`;
+}
+function mostrarAlertaClinico(msg, tipo) {
+  const box = document.getElementById("alert-box");
+  box.style.display = "block";
+  box.className = "";
+  box.innerHTML = `⚠️ <strong>ALERTA CLÍNICO</strong> — ${msg}`;
+  if(alertTimeout) clearTimeout(alertTimeout);
+  alertTimeout = setTimeout(esconderAlerta, 8000);
+}
+function esconderAlerta() {
+  document.getElementById("alert-box").style.display = "none";
+}
+
+// ── Estatísticas (REST API) ────────────────────────────────────────────────────
+async function carregarStats() {
+  try {
+    const s = await fetch(`${API_BASE}/stats`).then(r=>r.json());
+    document.getElementById("stat-total").textContent  = s.total_leituras ?? "0";
+    document.getElementById("stat-bpm").textContent    = s.media_bpm      ?? "—";
+    document.getElementById("stat-spo2").textContent   = s.media_spo2     ?? "—";
+    document.getElementById("stat-quedas").textContent = s.total_quedas   ?? "0";
+  } catch {}
+}
+
+// ── Histórico (REST API) ───────────────────────────────────────────────────────
+async function carregarHistorico() {
+  const limit = document.getElementById("filtro-limit").value || 20;
+  const from  = document.getElementById("filtro-from").value;
+  const to    = document.getElementById("filtro-to").value;
+  let url = `${API_BASE}/readings?limit=${limit}`;
+  if(from) url += `&from=${from}`;
+  if(to)   url += `&to=${to}`;
+  try {
+    const rows = await fetch(url).then(r=>r.json());
+    const tbody = document.getElementById("tbody-historico");
+    tbody.innerHTML = rows.map(r => {
+      const estado = r.heartRate > 100 ? `<span class="badge badge-red">BPM Alto</span>`
+                   : r.spO2 < 90      ? `<span class="badge badge-yellow">SpO2 Baixo</span>`
+                   : `<span class="badge badge-green">Normal</span>`;
+      return `<tr>
+        <td><input type="checkbox" class="chk-h" value="${r.id}"></td>
+        <td>${r.id}</td><td><strong>${r.heartRate}</strong></td>
+        <td>${r.spO2}</td><td>${r.timestamp}</td><td>${estado}</td>
+      </tr>`;
+    }).join("") || "<tr><td colspan='6' style='text-align:center;color:#aaa;padding:20px'>Sem dados</td></tr>";
+  } catch { }
+}
+
+// ── Quedas (REST API) ──────────────────────────────────────────────────────────
+async function carregarQuedas() {
+  try {
+    const rows = await fetch(`${API_BASE}/quedas`).then(r=>r.json());
+    const tbody = document.getElementById("tbody-quedas");
+    tbody.innerHTML = rows.map(r => {
+      const badge = r.tipo === "queda"
+        ? `<span class="badge badge-red">QUEDA</span>`
+        : `<span class="badge badge-yellow">IMPACTO</span>`;
+      return `<tr>
+        <td><input type="checkbox" class="chk-q" value="${r.id}"></td>
+        <td>${r.id}</td><td>${badge}</td>
+        <td>${r.intensidade}</td><td>${r.contagem}</td>
+        <td>${r.patientId}</td><td>${r.timestamp}</td>
+      </tr>`;
+    }).join("") || "<tr><td colspan='7' style='text-align:center;color:#aaa;padding:20px'>Sem eventos</td></tr>";
+  } catch { }
+}
+
+// ── DELETE ──────────────────────────────────────────────────────────────────────
+async function limparHistorico() {
+  const ids = [...document.querySelectorAll(".chk-h:checked")].map(c=>c.value);
+  if(!ids.length) return alert("Selecione registos para eliminar.");
+  for(const id of ids) await fetch(`${API_BASE}/readings/${id}`,{method:"DELETE"});
+  carregarHistorico(); carregarStats();
+}
+async function limparQuedas() {
+  const ids = [...document.querySelectorAll(".chk-q:checked")].map(c=>c.value);
+  if(!ids.length) return alert("Selecione eventos para eliminar.");
+  for(const id of ids) await fetch(`${API_BASE}/quedas/${id}`,{method:"DELETE"});
+  carregarQuedas(); carregarStats();
+}
+
+// ── Selecionar todos ────────────────────────────────────────────────────────────
+function selecionarTodos(tipo) {
+  const master = document.getElementById(`chk-all-${tipo}`);
+  document.querySelectorAll(`.chk-${tipo}`).forEach(c=>c.checked=master.checked);
+}
+
+// ── Acções WoT ──────────────────────────────────────────────────────────────────
+async function acaoWoT(action, body) {
+  try {
+    const r = await fetch(`http://localhost:8080/patient001/actions/${action}`,
+      { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+    const data = await r.json();
+    console.log(`[WoT] ${action}:`, data);
+    return data;
+  } catch(e) { alert(`Erro ao invocar ${action}: ${e.message}`); }
+}
+const acaoVibrar  = (p,d) => acaoWoT("activateVibration",{duration_ms:d,pattern:p,intensity:220});
+const acaoParar   = ()     => acaoWoT("stopVibration",{});
+const acaoCalibar = ()     => acaoWoT("calibrate",{mode:"quick"});
+
+// ── Tabs ────────────────────────────────────────────────────────────────────────
+function mudarTab(id, el) {
+  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById(`tab-${id}`).classList.add("active");
+  el.classList.add("active");
+}
+
+// ── Iniciar ─────────────────────────────────────────────────────────────────────
+atualizarTempoReal();
+carregarHistorico();
+carregarQuedas();
+carregarStats();
+
+setInterval(()=>{ atualizarTempoReal(); carregarStats(); }, POLL_MS);
+setInterval(()=>{ carregarHistorico(); carregarQuedas(); }, 10000);
+</script>
+</body>
+</html>

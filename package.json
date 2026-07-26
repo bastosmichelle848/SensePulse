@@ -8,7 +8,10 @@
   },
   "dependencies": {
     "@node-wot/binding-http": "^0.8.16",
-    "@node-wot/core": "^0.8.16"
+    "@node-wot/core": "^0.8.16",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "sqlite3": "^6.0.1"
   },
   "optionalDependencies": {
     "@node-wot/binding-mqtt": "^0.8.16"
